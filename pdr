@@ -1,0 +1,1513 @@
+PRD — Planner D
+1. Visão geral
+Nome do produto
+
+Planner D
+
+Tipo de produto
+
+App interno, single-user, feito para uso próprio.
+
+Objetivo principal
+
+O Planner D é um app simples para importar planejamentos mensais em .docx, organizar o conteúdo com Gemini, revisar a prévia, salvar os posts no app e gerar um link público para o cliente aprovar ou solicitar alterações.
+
+Frase-guia
+
+Planner D é um importador de planejamento DOCX com aprovação por link.
+
+Essa frase manda no produto inteiro. Qualquer coisa que não ajude nisso fica fora do MVP.
+
+2. Problema
+
+Hoje o fluxo de aprovação de planejamento mensal é bagunçado:
+
+O planejamento fica em DOCX ou PDF.
+O cliente aprova por WhatsApp, áudio ou mensagem solta.
+Pedido de alteração se perde no meio da conversa.
+Não existe histórico claro de aprovação.
+Não dá para saber rápido o que está aprovado, pendente ou em ajuste.
+Reaproveitar ou consultar planejamentos antigos vira bagunça.
+
+O Planner D resolve isso transformando o planejamento mensal em uma tela organizada, aprovada por link.
+
+3. Solução
+
+O app permite:
+
+Fazer login.
+Cadastrar cliente.
+Subir um arquivo .docx.
+Extrair o texto do arquivo.
+Enviar o texto para Gemini organizar em JSON estruturado.
+Revisar a prévia.
+Confirmar a importação.
+Salvar os posts no planejamento mensal.
+Gerar link público.
+Enviar link para o cliente.
+Cliente aprovar ou pedir alteração sem login.
+Você ver o status e os comentários no painel.
+
+O Gemini será usado apenas para organizar o conteúdo existente, não para criar conteúdo novo. A API do Gemini suporta saída estruturada em JSON/schema, o que encaixa bem nesse uso de transformar texto extraído em dados previsíveis.
+
+4. Escopo do MVP
+Entra no MVP
+Login interno.
+Cadastro simples de clientes.
+Upload de DOCX.
+Extração de texto do DOCX.
+Integração com Gemini.
+Retorno em JSON estruturado.
+Tela de prévia editável.
+Criação de planejamento mensal.
+Criação automática dos posts.
+Página do planejamento.
+Edição manual dos posts.
+Salvamento real no banco.
+Geração de link público.
+Tela pública de aprovação.
+Aprovação do planejamento.
+Solicitação de alteração geral.
+Comentário por post.
+Página simples de alterações.
+Histórico básico de eventos.
+Não entra no MVP
+Multiusuário.
+Workspace.
+Times.
+Permissões por cargo.
+SaaS.
+Billing.
+CRM completo.
+Publicação automática em redes sociais.
+IA criando conteúdo do zero.
+Kanban.
+Relatórios avançados.
+WhatsApp automático.
+App mobile.
+Login para cliente.
+Biblioteca de mídia.
+Google Drive.
+Integração com Instagram/Meta.
+Dashboard cheio de gráfico.
+
+Sem moda. Sem gordura.
+
+5. Usuários
+Usuário interno
+
+Você.
+
+Acessa com login.
+
+Pode:
+
+Cadastrar clientes.
+Editar clientes.
+Importar DOCX.
+Revisar planejamento.
+Editar posts.
+Salvar planejamento.
+Gerar link de aprovação.
+Ver comentários.
+Ver pedidos de alteração.
+Marcar alteração como resolvida.
+Cliente
+
+Acessa por link público.
+
+Não tem login.
+
+Pode:
+
+Ver apenas o planejamento enviado.
+Aprovar planejamento.
+Solicitar alteração.
+Comentar em post específico.
+
+Não pode:
+
+Acessar painel interno.
+Ver outros clientes.
+Ver outros planejamentos.
+Editar diretamente o planejamento.
+Apagar post.
+Criar planejamento.
+6. Stack recomendada
+Frontend
+Next.js App Router.
+TypeScript.
+Tailwind.
+Componentes simples.
+Backend
+Next.js Route Handlers.
+Server Actions quando fizer sentido.
+Supabase Postgres.
+Supabase Auth.
+Supabase RLS.
+IA
+Gemini API.
+Structured output / JSON Schema.
+Banco
+Supabase Postgres.
+Autenticação
+Supabase Auth.
+Sessão com SSR/cookies no Next.js.
+
+Supabase Auth é compatível com SSR e recomenda armazenar sessão em cookies em apps renderizados no servidor.
+
+Segurança
+RLS ligado.
+Rotas internas protegidas.
+APIs públicas controladas no backend.
+
+Supabase RLS funciona como camada de proteção por linha no Postgres e pode ser combinado com Supabase Auth para controlar acesso aos dados.
+
+7. Princípios do produto
+7.1 Simples acima de bonito
+
+O app precisa funcionar.
+
+Bonito, sim. Mas sem virar Dribbble inútil.
+
+Prioridade:
+
+Importar.
+Revisar.
+Salvar.
+Gerar link.
+Aprovar.
+7.2 DOCX é a entrada principal
+
+O fluxo começa no arquivo .docx.
+
+O app existe para pegar esse planejamento e transformar em algo navegável/aprovável.
+
+7.3 Gemini organiza, não cria
+
+O Gemini não deve:
+
+Inventar post.
+Melhorar legenda.
+Reescrever conteúdo.
+Criar estratégia.
+Completar informação inexistente.
+Decidir o que é melhor.
+
+O Gemini deve:
+
+Separar posts.
+Identificar datas.
+Identificar formatos.
+Identificar canais.
+Separar legenda.
+Separar direção de arte.
+Retornar campos faltantes como null.
+7.4 Prévia obrigatória
+
+Nada entra no banco direto depois do Gemini.
+
+Fluxo correto:
+
+DOCX
+→ texto extraído
+→ Gemini organiza
+→ app valida
+→ prévia editável
+→ usuário confirma
+→ banco salva
+
+Fluxo proibido:
+
+DOCX
+→ Gemini
+→ banco direto
+7.5 Cliente sem login
+
+Cliente acessa por link.
+
+Simples.
+
+Aprova ou pede alteração.
+
+7.6 Painel e link público são coisas diferentes
+/app/* = interno, protegido por login
+/aprovar/[token] = público, sem login
+
+No Next.js App Router, rotas dinâmicas são criadas com segmentos tipo [token], então /aprovar/[token] é o formato certo para o link público.
+
+8. Fluxo principal
+Login
+→ Home interna
+→ Criar/selecionar cliente
+→ Importar DOCX
+→ Extrair texto
+→ Gemini organiza
+→ Prévia editável
+→ Confirmar importação
+→ Planejamento criado
+→ Posts salvos
+→ Revisar planejamento
+→ Gerar link
+→ Cliente abre link
+→ Cliente aprova ou pede alteração
+→ Painel mostra status/comentários
+9. Rotas
+Públicas
+/login
+/aprovar/[token]
+Internas
+/app
+/app/clientes
+/app/clientes/[id]
+/app/importar
+/app/planejamentos
+/app/planejamentos/[id]
+/app/alteracoes
+APIs
+/api/import-docx
+/api/gemini/parse-plan
+/api/plans
+/api/plans/[id]
+/api/plans/[id]/generate-link
+/api/public/plans/[token]
+/api/public/plans/[token]/approve
+/api/public/plans/[token]/request-revision
+/api/public/plans/[token]/comments
+10. Telas
+10.1 Login
+Objetivo
+
+Proteger o painel interno.
+
+Campos
+E-mail.
+Senha.
+Botão entrar.
+Link “esqueci minha senha”, opcional.
+Comportamento
+Login válido leva para /app.
+Login inválido mostra erro.
+Usuário logado que acessa /login vai para /app.
+Usuário deslogado que tenta /app volta para /login.
+Critério de aceite
+Usuário logado acessa /app.
+Usuário deslogado não acessa /app.
+Usuário deslogado consegue abrir /aprovar/[token].
+10.2 Home interna /app
+Objetivo
+
+Ser uma tela inicial simples.
+
+Nada de dashboard gourmet.
+
+Elementos
+Botão principal: Importar planejamento
+Botão: Novo cliente
+Lista de últimos planejamentos.
+Lista de alterações pendentes.
+Atalho para clientes.
+Card de planejamento
+
+Mostra:
+
+Cliente.
+Mês/Ano.
+Status.
+Última atualização.
+Botão abrir.
+Botão copiar link, se existir.
+Estado vazio
+Nenhum planejamento ainda.
+Importe seu primeiro DOCX para começar.
+10.3 Clientes /app/clientes
+Objetivo
+
+Cadastrar e organizar clientes.
+
+Campos
+Nome.
+Empresa.
+E-mail.
+WhatsApp.
+Instagram.
+Observações.
+Status.
+Ações
+Criar cliente.
+Editar cliente.
+Inativar cliente.
+Abrir cliente.
+Página do cliente /app/clientes/[id]
+
+Mostra:
+
+Dados do cliente.
+Planejamentos vinculados.
+Últimas alterações.
+Status dos planejamentos.
+Critério de aceite
+Consigo criar cliente.
+Consigo editar cliente.
+Cliente aparece na importação.
+Planejamentos ficam vinculados ao cliente correto.
+10.4 Importar planejamento /app/importar
+
+Essa é a tela mais importante do app.
+
+Objetivo
+
+Importar o .docx, organizar com Gemini e gerar uma prévia editável.
+
+Etapa 1 — Cliente
+
+O usuário escolhe:
+
+Cliente existente.
+Ou cria um novo cliente rapidamente.
+Etapa 2 — Upload
+
+Aceitar apenas:
+
+.docx
+
+Validações:
+
+Bloquear arquivo vazio.
+Bloquear formato diferente.
+Mostrar erro se não conseguir ler.
+Etapa 3 — Processamento
+
+Ao clicar em Processar planejamento:
+
+Backend recebe DOCX
+→ extrai texto
+→ envia texto para Gemini
+→ recebe JSON
+→ valida JSON
+→ devolve prévia
+Etapa 4 — Prévia editável
+
+Mostrar:
+
+Cliente selecionado.
+Cliente detectado no DOCX, se houver.
+Mês detectado.
+Ano detectado.
+Título sugerido.
+Quantidade de posts encontrados.
+Alertas.
+Lista de posts.
+
+Cada post deve ser editável antes de salvar.
+
+Campos editáveis por post
+Data.
+Horário.
+Canal.
+Formato.
+Título/Tema.
+Legenda.
+Direção de arte.
+Referência.
+Observação interna.
+Etapa 5 — Confirmar importação
+
+Botão:
+
+Confirmar e criar planejamento
+
+Ao confirmar:
+
+Cria plans.
+Cria plan_items.
+Salva texto extraído, se necessário.
+Redireciona para /app/planejamentos/[id].
+Critério de aceite
+Subo DOCX.
+Texto é extraído.
+Gemini retorna estrutura.
+Prévia aparece.
+Posso editar prévia.
+Confirmo.
+Planejamento é criado.
+Posts aparecem salvos.
+11. Gemini
+11.1 Função do Gemini
+
+Transformar texto extraído do DOCX em JSON estruturado.
+
+11.2 O Gemini não pode
+Criar posts novos.
+Reescrever legenda.
+Melhorar copy.
+Inventar datas.
+Inventar canais.
+Inventar briefing.
+Alterar intenção do conteúdo.
+11.3 O Gemini pode
+Identificar blocos de posts.
+Separar campos.
+Organizar dados.
+Retornar null quando faltar informação.
+Gerar warnings quando houver dúvida.
+11.4 Schema esperado
+{
+  "client_name": "string | null",
+  "month": "number | null",
+  "year": "number | null",
+  "title": "string | null",
+  "items": [
+    {
+      "date": "YYYY-MM-DD | null",
+      "time": "HH:mm | null",
+      "channel": "string | null",
+      "format": "string | null",
+      "title": "string | null",
+      "caption": "string | null",
+      "creative_direction": "string | null",
+      "reference_url": "string | null",
+      "internal_notes": "string | null"
+    }
+  ],
+  "warnings": [
+    {
+      "type": "string",
+      "message": "string"
+    }
+  ]
+}
+11.5 Validações depois do Gemini
+
+O app valida tudo antes da prévia.
+
+Validações obrigatórias:
+
+items precisa ser array.
+Cada item precisa ter pelo menos title ou caption.
+Data pode ser null, mas deve aparecer como pendência.
+Mês e ano podem ser null, mas o usuário precisa escolher antes de salvar.
+Datas fora do mês escolhido geram alerta.
+URL inválida gera alerta.
+Horário inválido vira null.
+Campo vazio vira null.
+11.6 Falha do Gemini
+
+Mensagem:
+
+Não consegui organizar esse DOCX com segurança.
+Tente novamente ou ajuste o arquivo.
+
+Ações:
+
+Tentar novamente.
+Voltar.
+Opcional: colar texto manualmente.
+11.7 Prompt base do Gemini
+Você é um extrator de dados para um app chamado Planner D.
+
+Sua tarefa é ler o texto extraído de um arquivo DOCX de planejamento mensal de conteúdo e transformar em JSON estruturado.
+
+Regras:
+- Não crie conteúdos novos.
+- Não reescreva legendas.
+- Não melhore copy.
+- Não invente datas.
+- Não invente canais.
+- Não invente formatos.
+- Não invente cliente.
+- Apenas extraia e organize o que estiver no texto.
+- Se uma informação não existir, retorne null.
+- Se houver dúvida, adicione um aviso em warnings.
+- Cada post/conteúdo deve virar um item separado.
+- Preserve ao máximo o texto original da legenda.
+- Preserve ao máximo o texto original da direção de arte.
+- Datas devem estar no formato YYYY-MM-DD quando identificadas.
+- Horários devem estar no formato HH:mm quando identificados.
+- Retorne apenas JSON válido seguindo o schema fornecido.
+12. Planejamento /app/planejamentos/[id]
+Objetivo
+
+Revisar, editar, salvar e enviar o planejamento para aprovação.
+
+Cabeçalho
+
+Mostrar:
+
+Cliente.
+Título.
+Mês/Ano.
+Status.
+Última atualização.
+Ações principais
+Salvar alterações.
+Adicionar post.
+Gerar link de aprovação.
+Copiar link.
+Abrir visualização pública.
+Voltar.
+Visualização
+
+No MVP, usar lista por data.
+
+Não precisa calendário visual pesado agora.
+
+Exemplo:
+
+05/05/2026
+- Instagram | Reels | Bastidores da empresa
+
+08/05/2026
+- Instagram | Carrossel | 5 erros comuns
+
+Depois, se quiser, vira calendário visual. Agora não.
+
+Card de post
+
+Cada card mostra:
+
+Data.
+Horário.
+Canal.
+Formato.
+Título/Tema.
+Legenda.
+Direção de arte.
+Referência.
+Comentários do cliente.
+Botão editar.
+Botão excluir.
+Editor de post
+
+Campos:
+
+Data.
+Horário.
+Canal.
+Formato.
+Título/Tema.
+Legenda.
+Direção de arte.
+Referência.
+Observações internas.
+Status do item.
+Status do item
+draft
+ready
+needs_adjustment
+approved
+Critério de aceite
+Consigo editar post.
+Consigo excluir post.
+Consigo adicionar post manual.
+Salvo.
+Saio.
+Volto.
+Alterações continuam.
+13. Link público
+Geração do link
+
+Botão:
+
+Gerar link de aprovação
+
+Ao clicar:
+
+Verifica se o plano já tem public_token.
+Se tiver, reutiliza.
+Se não tiver, gera token único.
+Atualiza status para awaiting_approval.
+Preenche sent_at, se vazio.
+Cria evento sent.
+Formato do link
+https://planner-d.vercel.app/aprovar/[public_token]
+
+Ou domínio final equivalente.
+
+Regras do token
+Único.
+Não sequencial.
+Difícil de adivinhar.
+Pode ser UUID ou token aleatório seguro.
+Critério de aceite
+Gero link.
+Copio link.
+Abro em aba anônima.
+Não pede login.
+Não mostra painel.
+Mostra apenas aquele planejamento.
+14. Tela pública /aprovar/[token]
+Objetivo
+
+Permitir que o cliente aprove ou solicite alteração sem login.
+
+Conteúdo
+
+Topo:
+
+Nome do cliente/empresa.
+Título do planejamento.
+Mês/Ano.
+Status atual.
+
+Corpo:
+
+Lista de posts por data.
+Campo de comentário por post.
+Campo de comentário geral.
+
+Ações:
+
+Aprovar planejamento.
+Solicitar alteração.
+Post público
+
+Cada post mostra:
+
+Data.
+Horário, se existir.
+Canal.
+Formato.
+Título/Tema.
+Legenda.
+Direção de arte.
+Referência, se existir.
+Campo de comentário.
+
+Não mostrar:
+
+Observações internas.
+owner_id.
+Dados internos.
+Histórico administrativo.
+Aprovar planejamento
+
+Ao clicar:
+
+Mostra confirmação.
+Atualiza plans.status para approved.
+Preenche approved_at.
+Cria evento approved.
+Mostra sucesso.
+
+Mensagem de sucesso:
+
+Planejamento aprovado. Obrigado!
+Solicitar alteração geral
+
+Campo:
+
+O que precisa ser alterado?
+
+Ao enviar:
+
+Cria comentário sem plan_item_id.
+Atualiza plano para revision_requested.
+Cria evento revision_requested.
+Comentar em post específico
+
+Ao enviar comentário no card do post:
+
+Cria comentário com plan_item_id.
+Atualiza item para needs_adjustment.
+Atualiza plano para revision_requested.
+Critério de aceite
+Cliente abre link.
+Cliente comenta em post.
+Comentário aparece no painel.
+Cliente pede alteração geral.
+Status muda para revision_requested.
+Cliente aprova.
+Status muda para approved.
+15. Alterações /app/alteracoes
+Objetivo
+
+Mostrar todos os comentários e pedidos de alteração enviados pelo cliente.
+
+Lista
+
+Mostrar:
+
+Cliente.
+Planejamento.
+Data do comentário.
+Post relacionado.
+Comentário.
+Status.
+Ação.
+Status do comentário
+pending
+in_progress
+resolved
+Ações
+Abrir planejamento.
+Marcar como em ajuste.
+Marcar como resolvido.
+Critério de aceite
+Comentário feito pelo cliente aparece aqui.
+Consigo abrir o planejamento relacionado.
+Consigo marcar comentário como resolvido.
+16. Status
+Status do planejamento
+draft
+imported
+awaiting_approval
+revision_requested
+approved
+archived
+Significados
+draft
+
+Planejamento criado, mas ainda não enviado.
+
+imported
+
+Planejamento importado do DOCX e pendente de revisão.
+
+awaiting_approval
+
+Link gerado e aguardando cliente.
+
+revision_requested
+
+Cliente pediu alteração.
+
+approved
+
+Cliente aprovou.
+
+archived
+
+Planejamento antigo ou encerrado.
+
+17. Banco de dados
+17.1 profiles
+create table profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  name text,
+  email text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+17.2 clients
+create table clients (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references auth.users(id) on delete cascade,
+  name text not null,
+  company_name text,
+  email text,
+  phone text,
+  instagram text,
+  notes text,
+  status text not null default 'active',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+17.3 plans
+create table plans (
+  id uuid primary key default gen_random_uuid(),
+  owner_id uuid references auth.users(id) on delete cascade,
+  client_id uuid references clients(id) on delete cascade,
+  title text not null,
+  month integer not null check (month >= 1 and month <= 12),
+  year integer not null check (year >= 2024 and year <= 2100),
+  status text not null default 'draft',
+  public_token text unique,
+  import_source_text text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  sent_at timestamptz,
+  approved_at timestamptz,
+  unique (client_id, month, year)
+);
+17.4 plan_items
+create table plan_items (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid references plans(id) on delete cascade,
+  date date,
+  time time,
+  channel text,
+  format text,
+  title text,
+  caption text,
+  creative_direction text,
+  reference_url text,
+  internal_notes text,
+  status text not null default 'draft',
+  sort_order integer default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+17.5 plan_comments
+create table plan_comments (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid references plans(id) on delete cascade,
+  plan_item_id uuid references plan_items(id) on delete cascade,
+  author_type text not null check (author_type in ('owner', 'client')),
+  author_name text,
+  comment text not null,
+  status text not null default 'pending',
+  created_at timestamptz default now()
+);
+17.6 approval_events
+create table approval_events (
+  id uuid primary key default gen_random_uuid(),
+  plan_id uuid references plans(id) on delete cascade,
+  event_type text not null,
+  message text,
+  created_at timestamptz default now()
+);
+18. RLS
+
+Mesmo sendo app single-user, RLS fica ligado.
+
+Regra geral
+
+Usuário autenticado acessa apenas dados onde:
+
+owner_id = auth.uid()
+
+Para tabelas sem owner_id, como plan_items, o acesso acontece via relacionamento com plans.
+
+Importante
+
+A tela pública não deve abrir o Supabase direto para o cliente.
+
+A tela pública deve chamar API routes próprias.
+
+Essas APIs buscam o plano por public_token e só expõem os dados permitidos.
+
+Policies
+Clients
+alter table clients enable row level security;
+
+create policy "owner can manage own clients"
+on clients
+for all
+using (owner_id = auth.uid())
+with check (owner_id = auth.uid());
+Plans
+alter table plans enable row level security;
+
+create policy "owner can manage own plans"
+on plans
+for all
+using (owner_id = auth.uid())
+with check (owner_id = auth.uid());
+Plan items
+alter table plan_items enable row level security;
+
+create policy "owner can manage own plan items"
+on plan_items
+for all
+using (
+  exists (
+    select 1 from plans
+    where plans.id = plan_items.plan_id
+    and plans.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from plans
+    where plans.id = plan_items.plan_id
+    and plans.owner_id = auth.uid()
+  )
+);
+Plan comments
+alter table plan_comments enable row level security;
+
+create policy "owner can manage own comments"
+on plan_comments
+for all
+using (
+  exists (
+    select 1 from plans
+    where plans.id = plan_comments.plan_id
+    and plans.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from plans
+    where plans.id = plan_comments.plan_id
+    and plans.owner_id = auth.uid()
+  )
+);
+Approval events
+alter table approval_events enable row level security;
+
+create policy "owner can manage own approval events"
+on approval_events
+for all
+using (
+  exists (
+    select 1 from plans
+    where plans.id = approval_events.plan_id
+    and plans.owner_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1 from plans
+    where plans.id = approval_events.plan_id
+    and plans.owner_id = auth.uid()
+  )
+);
+19. API routes
+19.1 POST /api/import-docx
+Função
+
+Receber DOCX e extrair texto.
+
+Entrada
+multipart/form-data
+file: .docx
+Saída
+{
+  "success": true,
+  "text": "texto extraído do docx"
+}
+Erros
+Arquivo ausente.
+Arquivo inválido.
+Arquivo não é .docx.
+Arquivo vazio.
+Falha ao extrair texto.
+19.2 POST /api/gemini/parse-plan
+Função
+
+Enviar texto extraído para Gemini e receber JSON estruturado.
+
+Entrada
+{
+  "text": "texto do planejamento",
+  "client_id": "uuid opcional",
+  "month": 5,
+  "year": 2026
+}
+Saída
+{
+  "client_name": "Cliente Exemplo",
+  "month": 5,
+  "year": 2026,
+  "title": "Planejamento Maio 2026",
+  "items": [],
+  "warnings": []
+}
+Regras
+Precisa estar logado.
+Não salva nada.
+Só organiza e devolve.
+19.3 POST /api/plans
+Função
+
+Criar planejamento e itens depois da confirmação da prévia.
+
+Entrada
+{
+  "client_id": "uuid",
+  "title": "Planejamento Maio 2026",
+  "month": 5,
+  "year": 2026,
+  "import_source_text": "texto opcional",
+  "items": []
+}
+Saída
+{
+  "success": true,
+  "plan_id": "uuid"
+}
+19.4 POST /api/plans/[id]/generate-link
+Função
+
+Gerar ou reutilizar public_token.
+
+Saída
+{
+  "success": true,
+  "url": "https://planner-d.vercel.app/aprovar/token"
+}
+19.5 GET /api/public/plans/[token]
+Função
+
+Retornar os dados públicos do planejamento.
+
+Saída
+{
+  "plan": {},
+  "client": {},
+  "items": []
+}
+
+Não retorna:
+
+owner_id.
+internal_notes.
+dados internos.
+eventos administrativos.
+19.6 POST /api/public/plans/[token]/approve
+Função
+
+Aprovar planejamento.
+
+Entrada opcional
+{
+  "author_name": "Nome do cliente"
+}
+Ação
+Atualiza plans.status para approved.
+Preenche approved_at.
+Cria evento approved.
+19.7 POST /api/public/plans/[token]/request-revision
+Função
+
+Criar pedido de alteração geral.
+
+Entrada
+{
+  "author_name": "Nome do cliente",
+  "comment": "Texto do pedido"
+}
+Ação
+Cria comentário geral.
+Atualiza status do plano para revision_requested.
+Cria evento revision_requested.
+19.8 POST /api/public/plans/[token]/comments
+Função
+
+Criar comentário em post específico.
+
+Entrada
+{
+  "plan_item_id": "uuid",
+  "author_name": "Nome do cliente",
+  "comment": "Texto do comentário"
+}
+Ação
+Cria comentário.
+Atualiza item para needs_adjustment.
+Atualiza plano para revision_requested.
+20. Componentes
+Internos
+AppShell
+Sidebar
+Topbar
+ClientForm
+ClientList
+ImportWizard
+DocxUploader
+ImportPreview
+PlanHeader
+PlanItemCard
+PlanItemEditor
+GenerateApprovalLinkButton
+CommentsPanel
+AlterationsList
+StatusBadge
+Públicos
+PublicPlanPage
+PublicPlanHeader
+PublicPlanItemCard
+PublicCommentForm
+ApprovePlanButton
+RequestRevisionForm
+PublicSuccessState
+21. Estrutura de pastas
+app/
+  login/
+    page.tsx
+
+  app/
+    layout.tsx
+    page.tsx
+    clientes/
+      page.tsx
+      [id]/
+        page.tsx
+    importar/
+      page.tsx
+    planejamentos/
+      page.tsx
+      [id]/
+        page.tsx
+    alteracoes/
+      page.tsx
+
+  aprovar/
+    [token]/
+      page.tsx
+
+  api/
+    import-docx/
+      route.ts
+    gemini/
+      parse-plan/
+        route.ts
+    plans/
+      route.ts
+      [id]/
+        route.ts
+        generate-link/
+          route.ts
+    public/
+      plans/
+        [token]/
+          route.ts
+          approve/
+            route.ts
+          request-revision/
+            route.ts
+          comments/
+            route.ts
+
+components/
+  app/
+  public/
+  forms/
+  ui/
+
+lib/
+  supabase/
+    client.ts
+    server.ts
+    admin.ts
+  gemini.ts
+  docx.ts
+  validators/
+    plan.ts
+  utils.ts
+
+types/
+  database.ts
+  plan.ts
+22. Regras de UX
+22.1 Importação
+
+A tela precisa deixar claro o passo atual:
+
+1. Cliente
+2. DOCX
+3. Processamento
+4. Prévia
+5. Confirmação
+22.2 Página do planejamento
+
+Ações sempre visíveis:
+
+Salvar alterações
+Gerar link
+Copiar link
+Abrir link público
+22.3 Tela pública
+
+Ações claras:
+
+Aprovar planejamento
+Solicitar alteração
+22.4 Estados obrigatórios
+Carregando upload.
+Processando Gemini.
+Erro de arquivo.
+Erro de Gemini.
+Nenhum cliente.
+Nenhum planejamento.
+Nenhum post encontrado.
+Link copiado.
+Planejamento aprovado.
+Alteração enviada.
+23. Regras de dados
+23.1 Duplicidade
+
+Não permitir dois planejamentos do mesmo cliente no mesmo mês/ano.
+
+Regra no banco:
+
+unique (client_id, month, year)
+
+Se já existir, mostrar:
+
+Já existe um planejamento para esse cliente nesse mês.
+Abra o planejamento existente ou escolha outro mês.
+23.2 Dados públicos
+
+A tela pública nunca mostra:
+
+Observações internas.
+internal_notes.
+owner_id.
+Dados sensíveis.
+Informações administrativas.
+23.3 Exclusão
+
+Para MVP:
+
+Posts podem ser excluídos.
+Clientes devem ser inativados.
+Planejamentos devem ser arquivados.
+24. Variáveis de ambiente
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+NEXT_PUBLIC_APP_URL=
+
+Regras:
+
+SUPABASE_SERVICE_ROLE_KEY nunca vai para o client.
+GEMINI_API_KEY nunca vai para o client.
+Gemini sempre chamado pelo backend.
+A tela pública chama API interna, não Gemini direto.
+25. Critérios gerais de aceite
+
+O MVP só está pronto quando passar nesse checklist:
+
+1. Login funciona.
+2. /app bloqueia usuário deslogado.
+3. /aprovar/[token] abre sem login.
+4. Cliente é criado.
+5. Cliente é editado.
+6. DOCX é enviado.
+7. Texto do DOCX é extraído.
+8. Gemini retorna JSON válido.
+9. Prévia aparece.
+10. Prévia pode ser editada.
+11. Planejamento é criado.
+12. Posts são salvos.
+13. Sair e voltar mantém posts.
+14. Post pode ser editado.
+15. Post pode ser excluído.
+16. Link público é gerado.
+17. Link público abre o planejamento correto.
+18. Link público não cai no painel.
+19. Cliente aprova.
+20. Status muda para approved.
+21. Cliente pede alteração.
+22. Status muda para revision_requested.
+23. Comentário aparece em /app/alteracoes.
+24. Comentário por post aparece no post certo.
+25. Alteração pode ser marcada como resolvida.
+26. Plano de execução
+Fase 1 — Fundação
+
+Entregas:
+
+Projeto Next limpo.
+Supabase conectado.
+Auth funcionando.
+Rotas protegidas.
+Layout interno simples.
+Layout público separado.
+
+Critério:
+
+/app protegido
+/aprovar/[token] público
+login funcionando
+Fase 2 — Banco e clientes
+
+Entregas:
+
+Tabelas criadas.
+RLS ligado.
+CRUD de clientes.
+Página de cliente.
+
+Critério:
+
+Criar, editar e listar clientes funcionando.
+Fase 3 — Importação DOCX + Gemini
+
+Entregas:
+
+Upload DOCX.
+Extração de texto.
+Gemini estruturando JSON.
+Validação do JSON.
+Prévia editável.
+
+Critério:
+
+DOCX vira prévia estruturada editável.
+Fase 4 — Planejamento
+
+Entregas:
+
+Criar plano.
+Salvar itens.
+Editar itens.
+Excluir itens.
+Ver planejamento.
+
+Critério:
+
+Importar, salvar, sair e voltar sem perder nada.
+Fase 5 — Aprovação pública
+
+Entregas:
+
+Gerar token.
+Criar tela pública.
+Aprovar.
+Pedir alteração.
+Comentar por post.
+
+Critério:
+
+Cliente aprova ou pede ajuste sem login.
+Fase 6 — Alterações e polimento
+
+Entregas:
+
+Tela de alterações.
+Status de comentários.
+Histórico básico.
+Empty states.
+Toasts.
+Correção de bugs.
+
+Critério:
+
+Fluxo completo funcionando com cliente fake.
+27. Teste real obrigatório
+Teste 1 — Importação
+Criar cliente: Cliente Teste.
+Subir DOCX.
+Processar com Gemini.
+Revisar prévia.
+Confirmar.
+Abrir planejamento.
+Ver posts salvos.
+Teste 2 — Persistência
+Editar 1 post.
+Salvar.
+Sair do app.
+Voltar.
+Conferir se edição continua.
+Teste 3 — Link público
+Gerar link.
+Copiar.
+Abrir em aba anônima.
+Validar que não aparece painel.
+Validar que aparece só aquele planejamento.
+Teste 4 — Aprovação
+Na tela pública, aprovar.
+Voltar ao painel.
+Validar status approved.
+Validar approved_at preenchido.
+Teste 5 — Alteração geral
+Na tela pública, pedir alteração geral.
+Voltar ao painel.
+Validar status revision_requested.
+Validar comentário em /app/alteracoes.
+Teste 6 — Comentário por post
+Comentar em um post específico.
+Voltar ao painel.
+Abrir planejamento.
+Validar comentário no post correto.
+Teste 7 — Duplicidade
+Tentar importar planejamento do mesmo cliente/mês/ano.
+App deve bloquear ou avisar que já existe.
+28. Decisões finais cravadas
+Nome: Planner D.
+App single-user.
+Uso interno.
+Cliente sem login.
+DOCX como entrada principal.
+Gemini organiza, não cria.
+Prévia obrigatória.
+Banco salva tudo.
+Link público separado do painel.
+Sem multiusuário agora.
+Sem workspace.
+Sem CRM completo.
+Sem dashboard complexo.
+Sem publicação automática.
+Sem WhatsApp automático.
+Sem PDF.
+29. Prompt limpo para builder/dev
+Construa um app interno chamado Planner D.
+
+O Planner D é um app single-user para importar planejamentos mensais de conteúdo em DOCX, organizar o conteúdo com Gemini em JSON estruturado, revisar a prévia, salvar em um planejamento mensal e gerar um link público para o cliente aprovar ou solicitar alterações.
+
+Stack:
+- Next.js App Router
+- TypeScript
+- Tailwind
+- Supabase Auth
+- Supabase Postgres
+- Supabase RLS
+- Gemini API
+
+O app não é SaaS.
+Não implemente multiusuário, workspace, billing, permissões complexas, CRM robusto, publicação automática, notificações WhatsApp nem IA criando conteúdo do zero.
+
+Fluxo principal:
+1. Usuário faz login.
+2. Acessa /app.
+3. Cria ou seleciona um cliente.
+4. Vai para /app/importar.
+5. Sobe um arquivo DOCX.
+6. O backend extrai o texto do DOCX.
+7. O backend envia o texto para Gemini.
+8. Gemini retorna JSON estruturado seguindo schema fixo.
+9. O app valida o JSON.
+10. O app mostra prévia editável.
+11. O usuário confirma.
+12. O app cria um planejamento mensal e os itens do planejamento.
+13. O usuário revisa a página do planejamento.
+14. O usuário gera um link público.
+15. O cliente acessa /aprovar/[token] sem login.
+16. O cliente aprova ou solicita alteração.
+17. O usuário vê alterações no painel.
+
+Rotas:
+- /login
+- /app
+- /app/clientes
+- /app/clientes/[id]
+- /app/importar
+- /app/planejamentos
+- /app/planejamentos/[id]
+- /app/alteracoes
+- /aprovar/[token]
+
+APIs:
+- POST /api/import-docx
+- POST /api/gemini/parse-plan
+- POST /api/plans
+- POST /api/plans/[id]/generate-link
+- GET /api/public/plans/[token]
+- POST /api/public/plans/[token]/approve
+- POST /api/public/plans/[token]/request-revision
+- POST /api/public/plans/[token]/comments
+
+Banco:
+- profiles
+- clients
+- plans
+- plan_items
+- plan_comments
+- approval_events
+
+Regras:
+- /app exige login.
+- /aprovar/[token] é público.
+- O link público nunca deve redirecionar para o painel.
+- O Gemini nunca salva direto no banco.
+- O usuário precisa revisar a prévia antes de importar.
+- O planejamento precisa salvar todos os posts no banco.
+- Ao sair e voltar, os posts devem continuar salvos.
+- Não permitir duplicar planejamento para o mesmo cliente/mês/ano.
+- Tela pública não mostra dados internos.
+- API key do Gemini e service role do Supabase ficam apenas no backend.
+
+Interface:
+- Simples.
+- Limpa.
+- Sem dashboard complexo.
+- Home com: importar planejamento, clientes, últimos planejamentos e alterações pendentes.
+- Página de planejamento em lista por data, não precisa calendário visual avançado no MVP.
+
+Critério de pronto:
+- Importar DOCX, revisar, salvar, gerar link, aprovar e pedir alteração funcionando de ponta a ponta.
