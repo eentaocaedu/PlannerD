@@ -55,7 +55,8 @@ export default function PlanDetailClient({ initialPlan }: Props) {
       const token = publicToken || await generatePublicLinkAction(initialPlan.id)
       setPublicToken(token)
       
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+      const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+      const baseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
       const link = `${baseUrl}/aprovar/${token}`
       
       const message = buildWhatsAppMessage(
@@ -77,7 +78,8 @@ export default function PlanDetailClient({ initialPlan }: Props) {
 
   const handleCopyOnlyLink = async () => {
     if (!publicToken) return
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    const rawBaseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    const baseUrl = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl
     const link = `${baseUrl}/aprovar/${publicToken}`
     await navigator.clipboard.writeText(link)
     alert('Link copiado!')
@@ -280,7 +282,7 @@ export default function PlanDetailClient({ initialPlan }: Props) {
           ) : (
             <div className="flex flex-col sm:flex-row items-center gap-2 bg-muted/50 p-2 rounded-3xl border border-border w-full sm:w-auto">
               <div className="px-4 py-2 text-[10px] font-black text-muted-foreground truncate max-w-[150px] hidden lg:block">
-                {process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/aprovar/{publicToken}
+                {(process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '')}/aprovar/{publicToken}
               </div>
               <button
                 onClick={handleGenerateLink}

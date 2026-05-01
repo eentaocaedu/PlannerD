@@ -2,6 +2,9 @@ import { getPublicPlanByToken } from '@/app/actions/plans'
 import PublicPlanClient from './PublicPlanClient'
 import { Metadata } from 'next'
 
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export const metadata: Metadata = {
   title: 'Aprovação de Planejamento | Planner D',
   description: 'Visualize e aprove seu planejamento mensal de conteúdo.',

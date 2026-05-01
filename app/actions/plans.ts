@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createSupabaseAdmin } from '@/lib/supabase/admin'
 import { ParsedPlan, ParsedPlanItem } from '@/types/plan'
 import { revalidatePath } from 'next/cache'
 
@@ -379,6 +380,11 @@ export async function generatePublicLinkAction(planId: string) {
     token = crypto.randomUUID()
   }
 
+  console.log(`[GenerateLink] plan_id: ${planId}`)
+  console.log(`[GenerateLink] public_token salvo status: ${!!token}`)
+  console.log(`[GenerateLink] token salvo prefix: ${token?.substring(0, 8)}`)
+  console.log(`[GenerateLink] token URL prefix: ${token?.substring(0, 8)}`)
+
   const updates: any = {
     public_token: token,
     status: 'awaiting_approval'
@@ -421,46 +427,80 @@ export async function generatePublicLinkAction(planId: string) {
  */
 
 export async function getPublicPlanByToken(token: string) {
-  const supabase = await createClient() // Usando client comum, RLS deve permitir select se tiver o token
+  console.log(`[PublicPlan] token recebido prefix: ${token?.substring(0, 8)}`)
   
-  // Buscar plano pelo token
-  const { data: plan, error: planError } = await supabase
+  const supabaseAdmin = createSupabaseAdmin()
+  console.log(`[PublicPlan] service role existe: ${!!process.env.SUPABASE_SERVICE_ROLE_KEY}`)
+  
+  // 1. Buscar plano pelo token usando admin client
+  const { data: plan, error: planError } = await supabaseAdmin
     .from('plans')
     .select(`
-      id, title, month, year, status, sent_at, approved_at,
-      clients (name)
+      id, title, month, year, status, sent_at, approved_at, client_id
     `)
     .eq('public_token', token)
     .single()
 
-  if (planError || !plan) return null
+  if (planError || !plan) {
+    console.log(`[PublicPlan] plano encontrado: false`)
+    if (planError) console.error(`[PublicPlan] erro Supabase (plan):`, planError.message)
+    return null
+  }
 
-  // Buscar itens (sem internal_notes)
-  const { data: items, error: itemsError } = await supabase
+  console.log(`[PublicPlan] plano encontrado: true`)
+  console.log(`[PublicPlan] plan id encontrado: ${plan.id}`)
+
+  // 2. Buscar cliente separadamente para evitar complexidade de relacionamento no admin
+  const { data: client } = await supabaseAdmin
+    .from('clients')
+    .select('name')
+    .eq('id', plan.client_id)
+    .single()
+
+  // 3. Buscar itens (sem internal_notes)
+  const { data: items, error: itemsError } = await supabaseAdmin
     .from('plan_items')
     .select('id, plan_id, date, time, channel, format, title, caption, creative_direction, reference_url, status, sort_order')
     .eq('plan_id', plan.id)
     .order('date', { ascending: true })
     .order('time', { ascending: true })
 
-  if (itemsError) return null
+  if (itemsError) {
+    console.error(`[PublicPlan] erro Supabase (items):`, itemsError.message)
+    return null
+  }
 
-  // Buscar comentários públicos (author_type = client)
-  const { data: comments, error: commentsError } = await supabase
+  // 4. Buscar comentários públicos
+  const { data: comments, error: commentsError } = await supabaseAdmin
     .from('plan_comments')
-    .select('*')
+    .select('id, plan_id, plan_item_id, author_type, author_name, comment, status, created_at')
     .eq('plan_id', plan.id)
     .order('created_at', { ascending: true })
 
-  if (commentsError) return null
+  if (commentsError) {
+    console.error(`[PublicPlan] erro Supabase (comments):`, commentsError.message)
+    return null
+  }
 
-  return { ...plan, items, comments }
+  // Montar objeto de retorno seguro (sem owner_id, etc)
+  return {
+    id: plan.id,
+    title: plan.title,
+    month: plan.month,
+    year: plan.year,
+    status: plan.status,
+    sent_at: plan.sent_at,
+    approved_at: plan.approved_at,
+    clients: client,
+    items: items || [],
+    comments: comments || []
+  }
 }
 
 export async function approvePlanAction(token: string) {
-  const supabase = await createClient()
+  const supabaseAdmin = createSupabaseAdmin()
   
-  const { data: plan } = await supabase
+  const { data: plan } = await supabaseAdmin
     .from('plans')
     .select('id')
     .eq('public_token', token)
@@ -468,7 +508,7 @@ export async function approvePlanAction(token: string) {
 
   if (!plan) throw new Error('Plano inválido')
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin
     .from('plans')
     .update({
       status: 'approved',
@@ -478,14 +518,14 @@ export async function approvePlanAction(token: string) {
 
   if (error) throw new Error(error.message)
 
-  await supabase.from('approval_events').insert({
+  await supabaseAdmin.from('approval_events').insert({
     plan_id: plan.id,
     event_type: 'approved',
     message: 'Planejamento aprovado pelo cliente'
   })
 
   // Opcional: Aprovar todos os itens
-  await supabase
+  await supabaseAdmin
     .from('plan_items')
     .update({ status: 'approved' })
     .eq('plan_id', plan.id)
@@ -499,9 +539,9 @@ export async function addPublicCommentAction(token: string, data: {
   author_name: string,
   comment: string
 }) {
-  const supabase = await createClient()
+  const supabaseAdmin = createSupabaseAdmin()
   
-  const { data: plan } = await supabase
+  const { data: plan } = await supabaseAdmin
     .from('plans')
     .select('id')
     .eq('public_token', token)
@@ -510,7 +550,7 @@ export async function addPublicCommentAction(token: string, data: {
   if (!plan) throw new Error('Plano inválido')
 
   // Inserir comentário
-  const { error: commentError } = await supabase
+  const { error: commentError } = await supabaseAdmin
     .from('plan_comments')
     .insert({
       plan_id: plan.id,
@@ -524,19 +564,19 @@ export async function addPublicCommentAction(token: string, data: {
   if (commentError) throw new Error(commentError.message)
 
   // Atualizar status do plano e item
-  await supabase
+  await supabaseAdmin
     .from('plans')
     .update({ status: 'revision_requested' })
     .eq('id', plan.id)
 
   if (data.item_id) {
-    await supabase
+    await supabaseAdmin
       .from('plan_items')
       .update({ status: 'needs_adjustment' })
       .eq('id', data.item_id)
   }
 
-  await supabase.from('approval_events').insert({
+  await supabaseAdmin.from('approval_events').insert({
     plan_id: plan.id,
     event_type: 'revision_requested',
     message: data.item_id ? 'Alteração solicitada em um post' : 'Alteração geral solicitada'
