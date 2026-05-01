@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { getClients } from '@/app/actions/clients'
 import { createPlanAction, findExistingPlanForImport, appendItemsToPlanAction, getPlanById } from '@/app/actions/plans'
+import { extractTextFromPdfClient } from '@/lib/client/pdf-client'
 import { Client, ParsedPlan, ParsedPlanItem } from '@/types/plan'
 import { 
   ArrowUpTrayIcon, 
@@ -69,32 +70,41 @@ export default function ImportarPage() {
     setError(null)
     
     try {
-      setLoadingText('Extraindo texto do arquivo...')
-      const formData = new FormData()
-      formData.append('file', file)
-      
-      const importRes = await fetch('/api/import-docx', {
-        method: 'POST',
-        body: formData
-      })
-      
-      const contentTypeImport = importRes.headers.get("content-type") || ""
-      if (!contentTypeImport.includes("application/json")) {
-        const text = await importRes.text()
-        console.error("[Import] Resposta não JSON do Upload:", text.slice(0, 1000))
-        throw new Error("Erro de servidor ao processar o arquivo. Tente usar DOCX ou outro arquivo PDF.")
+      setLoadingText('Extraindo texto...')
+      let extractedText = ''
+
+      if (file.name.toLowerCase().endsWith('.pdf')) {
+        // Extração Client-Side para PDF
+        extractedText = await extractTextFromPdfClient(file)
+      } else {
+        // Extração Server-Side para DOCX
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const importRes = await fetch('/api/import-docx', {
+          method: 'POST',
+          body: formData
+        })
+        
+        const contentTypeImport = importRes.headers.get("content-type") || ""
+        if (!contentTypeImport.includes("application/json")) {
+          const text = await importRes.text()
+          console.error("[Import] Resposta não JSON do Upload:", text.slice(0, 1000))
+          throw new Error("Erro de servidor ao processar o arquivo DOCX.")
+        }
+        
+        const importData = await importRes.json()
+        if (!importRes.ok) throw new Error(importData.error || 'Erro no upload.')
+        extractedText = importData.text
       }
       
-      const importData = await importRes.json()
-      if (!importRes.ok) throw new Error(importData.error || 'Erro no upload.')
-      
-      setRawText(importData.text)
+      setRawText(extractedText)
 
       setLoadingText('Organizando conteúdo com IA...')
       const geminiRes = await fetch('/api/gemini/parse-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: importData.text })
+        body: JSON.stringify({ text: extractedText })
       })
 
       const contentType = geminiRes.headers.get("content-type") || ""
@@ -102,7 +112,7 @@ export default function ImportarPage() {
       if (!contentType.includes("application/json")) {
         const text = await geminiRes.text()
         console.error("[Import] Resposta não JSON da API:", text.slice(0, 1000))
-        throw new Error("A API retornou uma resposta inválida (HTML). Verifique o terminal do servidor.")
+        throw new Error("A API retornou uma resposta inválida (HTML).")
       }
 
       const geminiData = await geminiRes.json()
