@@ -3,67 +3,44 @@
  */
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
-  // 1. Validação básica de cabeçalho PDF
-  const isPdf = buffer.toString('utf8', 0, 4) === '%PDF'
-  
-  console.log(`[PDF] Diagnóstico: Tamanho=${buffer.length} bytes, Header=${buffer.toString('utf8', 0, 10)}, IsPDF=${isPdf}`)
+  if (!buffer || buffer.length === 0) {
+    throw new Error('PDF vazio ou inválido.')
+  }
 
-  if (!isPdf) {
+  // Validação básica de cabeçalho PDF
+  const header = buffer.subarray(0, 4).toString('utf8')
+  if (header !== '%PDF') {
     throw new Error('Arquivo PDF inválido ou corrompido.')
   }
 
   try {
-    // Carregamento dinâmico para isolamento total
-    console.log('[PDF] Carregando biblioteca pdf-parse...')
-    const pdf = require('pdf-parse')
-    
-    // Configurações para garantir extração textual limpa
-    const options = {
-      pagerender: (pageData: any) => {
-        // Função customizada para garantir extração de texto de todas as páginas
-        return pageData.getTextContent()
-          .then((textContent: any) => {
-            let lastY, text = '';
-            for (let item of textContent.items) {
-              if (lastY == item.transform[5] || !lastY) {
-                text += item.str;
-              } else {
-                text += '\n' + item.str;
-              }
-              lastY = item.transform[5];
-            }
-            return text;
-          });
-      }
+    // Carregamento dinâmico compatível com ESM/Next.js
+    // Versão 1.1.1 é mais estável para ambientes serverless (não pede DOMMatrix)
+    const pdfImport = await import('pdf-parse')
+    const pdf = pdfImport.default || pdfImport
+
+    const result = await pdf(buffer)
+
+    // Limpeza e normalização do texto
+    const text = result.text
+      ?.replace(/\r/g, '\n')
+      ?.replace(/[ \t]+/g, ' ')
+      ?.replace(/\n{3,}/g, '\n\n')
+      ?.trim()
+
+    if (!text || text.length < 100) {
+      console.warn('[PDF] Texto extraído muito curto:', text?.length)
+      throw new Error('Não encontrei texto selecionável suficiente neste PDF. Envie um PDF com texto copiável ou use DOCX.')
     }
 
-    const data = await pdf(buffer)
-    
-    const extractedText = data.text ? data.text.trim() : ''
-    console.log(`[PDF] Extração concluída. Tamanho do texto: ${extractedText.length} caracteres.`)
-
-    // Se o texto for muito curto, pode ser um PDF de imagem ou erro de extração
-    if (extractedText.length < 20) {
-      console.warn('[PDF] Texto extraído muito curto. Possível PDF de imagem.')
-      throw new Error('Não encontrei texto selecionável neste PDF. Envie um PDF com texto copiável ou use DOCX.')
-    }
-
-    // Limpeza básica: normalizar espaços e quebras
-    return extractedText
-      .replace(/[ \t]+/g, ' ') // Normaliza espaços horizontais
-      .replace(/\n\s*\n/g, '\n\n') // Normaliza quebras de linha duplas
-      .trim()
-
+    return text
   } catch (error: any) {
     console.error('[PDF] Erro real na extração:', error)
     
-    // Se for nosso erro customizado, propaga
-    if (error.message.includes('Não encontrei texto selecionável') || 
-        error.message.includes('PDF inválido')) {
+    if (error.message.includes('Não encontrei texto') || error.message.includes('PDF inválido')) {
       throw error
     }
     
-    // Erro inesperado da biblioteca
-    throw new Error('Não consegui processar este PDF no servidor. Tente DOCX ou envie outro PDF com texto selecionável.')
+    throw new Error('Não consegui processar este PDF no servidor. Tente converter para DOCX ou envie outro PDF.')
   }
 }
