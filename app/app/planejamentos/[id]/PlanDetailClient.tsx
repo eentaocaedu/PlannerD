@@ -52,10 +52,20 @@ export default function PlanDetailClient({ initialPlan }: Props) {
   const handleGenerateLink = async () => {
     setLoading(true)
     try {
-      const token = await generatePublicLinkAction(initialPlan.id)
+      const token = publicToken || await generatePublicLinkAction(initialPlan.id)
       setPublicToken(token)
-      const link = `${window.location.origin}/aprovar/${token}`
-      await navigator.clipboard.writeText(link)
+      
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+      const link = `${baseUrl}/aprovar/${token}`
+      
+      const message = buildWhatsAppMessage(
+        initialPlan.clients?.name || 'Cliente',
+        initialPlan.month,
+        initialPlan.year,
+        link
+      )
+
+      await navigator.clipboard.writeText(message)
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch (err) {
@@ -63,6 +73,19 @@ export default function PlanDetailClient({ initialPlan }: Props) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleCopyOnlyLink = async () => {
+    if (!publicToken) return
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    const link = `${baseUrl}/aprovar/${publicToken}`
+    await navigator.clipboard.writeText(link)
+    alert('Link copiado!')
+  }
+
+  const buildWhatsAppMessage = (clientName: string, month: number, year: number, url: string) => {
+    const monthName = MONTH_NAMES[month - 1]
+    return `Olá, ${clientName}! Tudo bem?\n\nO planejamento de ${monthName} de ${year} já está pronto para sua avaliação.\n\nVocê pode acessar, revisar os conteúdos e aprovar ou solicitar ajustes pelo link abaixo:\n\n${url}\n\nQualquer ajuste pode ser enviado diretamente por lá.`
   }
 
   const handleUpdateCommentStatus = async (commentId: string, status: string) => {
@@ -245,16 +268,38 @@ export default function PlanDetailClient({ initialPlan }: Props) {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
-          <button
-            onClick={handleGenerateLink}
-            disabled={loading}
-            className={`w-full sm:w-auto flex items-center justify-center space-x-2 border rounded-2xl px-6 py-4 text-sm font-bold transition-all active:scale-[0.98] ${
-              copied ? 'bg-green-500/10 border-green-500/20 text-green-600' : 'bg-background border-border text-foreground hover:bg-accent'
-            }`}
-          >
-            {copied ? <CheckIcon className="h-5 w-5" /> : <ShareIcon className="h-5 w-5" />}
-            <span>{copied ? 'Link Copiado!' : 'Gerar Link de Aprovação'}</span>
-          </button>
+          {!publicToken ? (
+            <button
+              onClick={handleGenerateLink}
+              disabled={loading}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-background border border-border text-foreground rounded-2xl px-6 py-4 text-sm font-bold hover:bg-accent transition-all active:scale-[0.98] disabled:opacity-50"
+            >
+              <ShareIcon className="h-5 w-5" />
+              <span>{loading ? 'Gerando...' : 'Gerar Link de Aprovação'}</span>
+            </button>
+          ) : (
+            <div className="flex flex-col sm:flex-row items-center gap-2 bg-muted/50 p-2 rounded-3xl border border-border w-full sm:w-auto">
+              <div className="px-4 py-2 text-[10px] font-black text-muted-foreground truncate max-w-[150px] hidden lg:block">
+                {process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/aprovar/{publicToken}
+              </div>
+              <button
+                onClick={handleGenerateLink}
+                className={`w-full sm:w-auto flex items-center justify-center space-x-2 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.95] ${
+                  copied ? 'bg-green-500 text-white shadow-lg shadow-green-500/20' : 'bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/20'
+                }`}
+              >
+                {copied ? <CheckIcon className="h-4 w-4" /> : <ChatBubbleOvalLeftEllipsisIcon className="h-4 w-4" />}
+                <span>{copied ? 'Mensagem Copiada!' : 'Copiar Mensagem'}</span>
+              </button>
+              <button
+                onClick={handleCopyOnlyLink}
+                className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-background border border-border text-foreground rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-accent transition-all active:scale-[0.95]"
+              >
+                <LinkIcon className="h-4 w-4" />
+                <span>Apenas Link</span>
+              </button>
+            </div>
+          )}
           <DeletePlanButton 
             planId={initialPlan.id} 
             planTitle={initialPlan.title} 
