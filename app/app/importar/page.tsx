@@ -78,6 +78,13 @@ export default function ImportarPage() {
         body: formData
       })
       
+      const contentTypeImport = importRes.headers.get("content-type") || ""
+      if (!contentTypeImport.includes("application/json")) {
+        const text = await importRes.text()
+        console.error("[Import] Resposta não JSON do Upload:", text.slice(0, 1000))
+        throw new Error("Erro de servidor ao processar o arquivo. Tente usar DOCX ou outro arquivo PDF.")
+      }
+      
       const importData = await importRes.json()
       if (!importRes.ok) throw new Error(importData.error || 'Erro no upload.')
       
