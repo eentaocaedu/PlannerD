@@ -18,12 +18,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Arquivo ausente.' }, { status: 400 })
     }
 
-    if (!file.name.endsWith('.docx')) {
-      return NextResponse.json({ error: 'Apenas arquivos .docx são permitidos.' }, { status: 400 })
-    }
+    const fileName = file.name.toLowerCase()
+    let text = ''
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const text = await extractTextFromDocx(buffer)
+    if (fileName.endsWith('.docx')) {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      text = await extractTextFromDocx(buffer)
+    } else if (fileName.endsWith('.pdf')) {
+      const { extractTextFromPdf } = await import('@/lib/pdf')
+      const buffer = Buffer.from(await file.arrayBuffer())
+      text = await extractTextFromPdf(buffer)
+    } else {
+      return NextResponse.json({ 
+        error: 'Formato não suportado. Envie um arquivo DOCX ou PDF com texto selecionável.' 
+      }, { status: 400 })
+    }
 
     return NextResponse.json({ success: true, text })
   } catch (error: any) {

@@ -445,15 +445,17 @@ export default function ImportarPage() {
                 <div className="flex flex-col items-center">
                   <DocumentTextIcon className={`h-16 w-16 mb-4 transition-colors ${file ? 'text-green-500' : 'text-muted-foreground/30'}`} />
                   <p className="text-sm font-black text-foreground truncate max-w-full px-4">
-                    {file ? file.name : 'Selecione o arquivo .docx'}
+                    {file ? file.name : 'Selecione o arquivo .docx ou .pdf'}
                   </p>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-2">Arraste ou clique aqui</p>
+                  <p className="text-sm font-black text-muted-foreground uppercase tracking-widest mt-2">DOCX ou PDF (Texto)</p>
+                  <p className="text-[10px] font-bold text-muted-foreground/60 italic mt-1">PDF escaneado/imagem ainda não é suportado.</p>
                 </div>
               </div>
               <input 
                 type="file" 
                 className="hidden" 
-                accept=".docx" 
+                id="file-upload"
+                accept=".docx,.pdf" 
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
             </label>
