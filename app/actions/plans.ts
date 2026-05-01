@@ -35,6 +35,7 @@ export async function createPlanAction(data: {
   title: string
   month: number
   year: number
+  presentation_text?: string | null
   import_source_text?: string
   items: ParsedPlanItem[]
 }) {
@@ -70,6 +71,7 @@ export async function createPlanAction(data: {
       title: data.title,
       month: data.month,
       year: data.year,
+      presentation_text: data.presentation_text || null,
       status: 'imported'
     })
     .select()
@@ -159,6 +161,26 @@ export async function getPlanById(id: string) {
     .order('created_at', { ascending: false })
 
   return { ...plan, items, comments: comments || [], events: events || [] }
+}
+
+export async function updatePlanPresentationAction(planId: string, text: string | null) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Não autorizado')
+
+  const { error } = await supabase
+    .from('plans')
+    .update({ 
+      presentation_text: text || null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', planId)
+    .eq('owner_id', user.id)
+
+  if (error) throw new Error(error.message)
+  
+  revalidatePath(`/app/planejamentos/${planId}`)
+  return true
 }
 
 export async function updatePlanItemAction(id: string, data: any) {
@@ -436,7 +458,7 @@ export async function getPublicPlanByToken(token: string) {
   const { data: plan, error: planError } = await supabaseAdmin
     .from('plans')
     .select(`
-      id, title, month, year, status, sent_at, approved_at, client_id
+      id, title, month, year, status, sent_at, approved_at, client_id, presentation_text
     `)
     .eq('public_token', token)
     .single()
@@ -491,6 +513,7 @@ export async function getPublicPlanByToken(token: string) {
     status: plan.status,
     sent_at: plan.sent_at,
     approved_at: plan.approved_at,
+    presentation_text: plan.presentation_text,
     clients: client,
     items: items || [],
     comments: comments || []
@@ -679,7 +702,7 @@ export async function findExistingPlanForImport(clientId: string, month: number,
   const { data, error } = await supabase
     .from('plans')
     .select(`
-      id, title, status, month, year, public_token,
+      id, title, status, month, year, public_token, presentation_text,
       clients (name),
       plan_items (id)
     `)
@@ -701,13 +724,14 @@ export async function findExistingPlanForImport(clientId: string, month: number,
       month: data.month,
       year: data.year,
       public_token: data.public_token,
+      presentation_text: data.presentation_text,
       clientName: (data.clients as any)?.name,
       itemsCount: Array.isArray(data.plan_items) ? data.plan_items.length : 0
     }
   }
 }
 
-export async function appendItemsToPlanAction(planId: string, items: ParsedPlanItem[]) {
+export async function appendItemsToPlanAction(planId: string, items: ParsedPlanItem[], presentationText?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Não autorizado')
@@ -749,6 +773,10 @@ export async function appendItemsToPlanAction(planId: string, items: ParsedPlanI
   const updates: any = { updated_at: new Date().toISOString() }
   if (plan.status === 'approved') {
     updates.status = 'awaiting_approval'
+  }
+
+  if (presentationText) {
+    updates.presentation_text = presentationText
   }
 
   await supabase.from('plans').update(updates).eq('id', planId)

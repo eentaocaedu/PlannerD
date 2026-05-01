@@ -26,6 +26,7 @@ export const ParsedPlanSchema = z.object({
   month: z.number().min(1).max(12).nullable(),
   year: z.number().min(2024).max(2100).nullable(),
   title: z.string().nullable(),
+  presentation_text: z.preprocess(emptyToNull, z.string().nullable()),
   items: z.array(ParsedPlanItemSchema),
   warnings: z.array(ParsedPlanWarningSchema)
 })

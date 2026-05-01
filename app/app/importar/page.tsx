@@ -314,6 +314,7 @@ export default function ImportarPage() {
         title: parsedPlan.title,
         month: parsedPlan.month,
         year: parsedPlan.year,
+        presentation_text: parsedPlan.presentation_text,
         items: parsedPlan.items
       })
 
@@ -353,8 +354,20 @@ export default function ImportarPage() {
     setShowDecisionModal(false)
     setShowDuplicateWarning(false)
 
+    // Decidir se atualiza a apresentação
+    let presentationToUpdate = null
+    if (parsedPlan.presentation_text && !existingPlan.presentation_text) {
+      // Se o plano existente não tem apresentação, mas o novo tem, preencher
+      presentationToUpdate = parsedPlan.presentation_text
+    } else if (parsedPlan.presentation_text && existingPlan.presentation_text && parsedPlan.presentation_text !== existingPlan.presentation_text) {
+      // Se ambos têm e são diferentes, perguntar ou decidir (MVP: manter existente por padrão na action se não passar nada)
+      // Aqui poderíamos ter um checkbox na modal, mas seguindo a regra segura:
+      // "nunca sobrescrever apresentação existente automaticamente" -> passamos null se já existir
+      presentationToUpdate = null 
+    }
+
     try {
-      await appendItemsToPlanAction(existingPlan.id, parsedPlan.items)
+      await appendItemsToPlanAction(existingPlan.id, parsedPlan.items, presentationToUpdate)
       router.push(`/app/planejamentos/${existingPlan.id}`)
     } catch (err: any) {
       setError(err.message)
@@ -544,6 +557,45 @@ export default function ImportarPage() {
                 placeholder="Ex: Conteúdo Agosto 2024"
               />
             </div>
+          </div>
+
+          {/* Presentation Text */}
+          <div className="glass p-8 rounded-[2.5rem] border-border space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <DocumentTextIcon className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-black text-foreground uppercase tracking-widest">Apresentação do planejamento</h3>
+              </div>
+              {!parsedPlan.presentation_text && (
+                <button 
+                  onClick={() => setParsedPlan({ ...parsedPlan, presentation_text: 'Objetivo estratégico do mês:\n\nTema central do mês:' })}
+                  className="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
+                >
+                  + Adicionar apresentação
+                </button>
+              )}
+            </div>
+            
+            {parsedPlan.presentation_text !== null ? (
+              <div className="space-y-2">
+                <p className="text-[10px] text-muted-foreground font-medium italic">Esse texto aparecerá para o cliente antes do calendário.</p>
+                <textarea 
+                  value={parsedPlan.presentation_text || ''}
+                  onChange={(e) => setParsedPlan({ ...parsedPlan, presentation_text: e.target.value })}
+                  rows={4}
+                  className="w-full bg-muted/50 border border-border rounded-2xl p-5 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all scrollbar-hide"
+                  placeholder="Escreva a apresentação estratégica aqui..."
+                />
+                <button 
+                  onClick={() => setParsedPlan({ ...parsedPlan, presentation_text: null })}
+                  className="text-[10px] font-bold text-destructive/60 hover:text-destructive uppercase tracking-widest transition-colors"
+                >
+                  Remover apresentação
+                </button>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground italic px-1">Nenhuma apresentação estratégica identificada.</p>
+            )}
           </div>
 
           {/* Warnings */}

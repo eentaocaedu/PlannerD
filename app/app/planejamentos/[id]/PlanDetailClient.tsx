@@ -8,7 +8,8 @@ import {
   createPlanItemAction,
   getAdjacentPlanAction,
   generatePublicLinkAction,
-  updateCommentStatusAction
+  updateCommentStatusAction,
+  updatePlanPresentationAction
 } from '@/app/actions/plans'
 import { 
   PencilSquareIcon, 
@@ -26,7 +27,8 @@ import {
   ShareIcon,
   CheckIcon,
   ChatBubbleOvalLeftEllipsisIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import DeletePlanButton from '@/components/DeletePlanButton'
 
@@ -47,6 +49,9 @@ export default function PlanDetailClient({ initialPlan }: Props) {
   const [adjacentPlans, setAdjacentPlans] = useState<{ prev: string | null, next: string | null }>({ prev: null, next: null })
   const [publicToken, setPublicToken] = useState(initialPlan.public_token)
   const [copied, setCopied] = useState(false)
+  const [presentation, setPresentation] = useState(initialPlan.presentation_text)
+  const [isEditingPresentation, setIsEditingPresentation] = useState(false)
+  const [tempPresentation, setTempPresentation] = useState(initialPlan.presentation_text || '')
   const router = useRouter()
 
   const handleGenerateLink = async () => {
@@ -96,6 +101,19 @@ export default function PlanDetailClient({ initialPlan }: Props) {
       window.location.reload()
     } catch (err) {
       alert('Erro ao atualizar status do comentário')
+    }
+  }
+
+  const handleUpdatePresentation = async () => {
+    setLoading(true)
+    try {
+      await updatePlanPresentationAction(initialPlan.id, tempPresentation)
+      setPresentation(tempPresentation)
+      setIsEditingPresentation(false)
+    } catch (err) {
+      alert('Erro ao atualizar apresentação')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -352,6 +370,69 @@ export default function PlanDetailClient({ initialPlan }: Props) {
           </div>
         </section>
       )}
+
+      {/* Strategic Presentation Section */}
+      <section className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="flex items-center space-x-4">
+          <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] whitespace-nowrap">Apresentação Estratégica</h3>
+          <div className="h-px bg-border flex-1"></div>
+          {!presentation && !isEditingPresentation && (
+            <button 
+              onClick={() => {
+                setTempPresentation('Objetivo estratégico do mês:\n\nTema central do mês:')
+                setIsEditingPresentation(true)
+              }}
+              className="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
+            >
+              + Adicionar Apresentação
+            </button>
+          )}
+          {presentation && !isEditingPresentation && (
+            <button 
+              onClick={() => {
+                setTempPresentation(presentation)
+                setIsEditingPresentation(true)
+              }}
+              className="text-[10px] font-black uppercase text-primary tracking-widest hover:underline"
+            >
+              Editar
+            </button>
+          )}
+        </div>
+
+        {isEditingPresentation ? (
+          <div className="glass p-8 rounded-[2rem] border-primary/20 space-y-4">
+            <textarea 
+              value={tempPresentation}
+              onChange={(e) => setTempPresentation(e.target.value)}
+              rows={6}
+              className="w-full bg-muted/50 border border-border rounded-2xl p-5 text-sm leading-relaxed text-foreground focus:outline-none focus:ring-4 focus:ring-primary/5 focus:border-primary transition-all scrollbar-hide"
+              placeholder="Escreva a apresentação estratégica que o cliente verá..."
+            />
+            <div className="flex justify-end space-x-3">
+              <button 
+                onClick={() => setIsEditingPresentation(false)}
+                className="px-6 py-2 border border-border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-card transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleUpdatePresentation}
+                disabled={loading}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-lg shadow-primary/10"
+              >
+                {loading ? 'Salvando...' : 'Salvar Apresentação'}
+              </button>
+            </div>
+          </div>
+        ) : presentation ? (
+          <div className="glass p-8 rounded-[2rem] border-border">
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line italic">
+              {presentation}
+            </p>
+          </div>
+        ) : null}
+      </section>
 
       {/* Main Content Area */}
       <div className="space-y-6">

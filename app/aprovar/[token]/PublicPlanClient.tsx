@@ -153,6 +153,20 @@ export default function PublicPlanClient({ initialPlan, token }: { initialPlan: 
           </div>
         )}
 
+        {initialPlan.presentation_text && (
+          <section className="animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="flex items-center space-x-4 mb-6">
+              <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] whitespace-nowrap">Apresentação Estratégica</h3>
+              <div className="h-px bg-border flex-1"></div>
+            </div>
+            <div className="glass p-8 md:p-12 rounded-[2.5rem] border-border bg-card/20">
+              <p className="text-base md:text-lg text-foreground leading-relaxed italic whitespace-pre-line font-medium text-center max-w-4xl mx-auto">
+                {initialPlan.presentation_text}
+              </p>
+            </div>
+          </section>
+        )}
+
         <div className="space-y-6">
           <div className="flex items-center justify-between px-2">
             <h3 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Calendário Mensal</h3>

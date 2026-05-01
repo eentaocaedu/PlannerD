@@ -16,6 +16,7 @@ export type Plan = {
   updated_at: string
   sent_at: string | null
   approved_at: string | null
+  presentation_text: string | null
 }
 
 export type PlanItem = {
@@ -77,6 +78,7 @@ export type ParsedPlan = {
   month: number | null
   year: number | null
   title: string | null
+  presentation_text: string | null
   items: ParsedPlanItem[]
   warnings: ParsedPlanWarning[]
 }
