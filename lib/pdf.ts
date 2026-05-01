@@ -1,4 +1,5 @@
-import pdf from 'pdf-parse'
+// Usando require para evitar erros de exportação default em módulos ESM do Next.js
+const pdf = require('pdf-parse')
 
 /**
  * Extrai texto de um buffer de PDF com texto selecionável.
@@ -14,6 +15,11 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
     return data.text.trim()
   } catch (error: any) {
     console.error('[PDF] Erro na extração:', error.message)
+    
+    if (error.message.includes('Não consegui extrair texto')) {
+      throw error
+    }
+    
     throw new Error('Não consegui ler o PDF. Verifique se o arquivo não está protegido ou corrompido.')
   }
 }
