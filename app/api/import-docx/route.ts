@@ -29,21 +29,23 @@ export async function POST(req: NextRequest) {
 
     if (fileName.endsWith('.docx')) {
       fileType = 'docx'
+      console.log(`[Import] Processando DOCX: ${fileName}`)
       const buffer = Buffer.from(await file.arrayBuffer())
       text = await extractTextFromDocx(buffer)
+      console.log(`[Import] DOCX extraído com sucesso. Tamanho: ${text.length} chars.`)
     } else if (fileName.endsWith('.pdf')) {
       fileType = 'pdf'
-      // IMPORTANTE: Import dinâmico para isolar dependências de PDF do fluxo DOCX
-      // Isso evita erros como "DOMMatrix is not defined" em rotas que não usam PDF
+      console.log(`[Import] Processando PDF: ${fileName}`)
       try {
         const { extractTextFromPdf } = await import('@/lib/pdf')
         const buffer = Buffer.from(await file.arrayBuffer())
         text = await extractTextFromPdf(buffer)
+        console.log(`[Import] PDF extraído com sucesso. Tamanho: ${text.length} chars.`)
       } catch (pdfErr: any) {
-        console.error('[Import] Erro específico no fluxo PDF:', pdfErr.message)
+        console.error('[Import] Falha no fluxo PDF:', pdfErr.message)
         return NextResponse.json({ 
           success: false, 
-          error: pdfErr.message || 'Não consegui processar este PDF. Tente DOCX ou envie outro PDF com texto selecionável.' 
+          error: pdfErr.message || 'Não consegui processar este PDF no servidor.' 
         }, { status: 400 })
       }
     } else {
